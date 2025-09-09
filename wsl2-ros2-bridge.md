@@ -1,8 +1,14 @@
-# Configure 
 
-Configure WSL2 (Ubuntu 22.04/24.04) to get a LAN IP address via Hyper-V bridged networking, enabling ROS 2 / DDS (UDP) communication with other PCs on the network.
+# WSL2 Dual Network Setup for ROS 2 (Lab + Direct Raspberry)
 
-## 🔹 1. Enable Hyper-V (if not already)
+Enable WSL2 Ubuntu to communicate via **UDP (ROS 2 / DDS)** in two scenarios for BlueOS ROS2:
+
+1. **Lab network (DHCP)** → Windows + Raspberry + WSL2 get IPs in `150.162.x.x` automatically.
+2. **Direct cable to Thether** → Static IPs in `192.168.2.x`.
+
+WSL2 should automatically support both, no manual reconfiguration.
+
+## 1. Enable Hyper-V (if not already)
 
 Open PowerShell **as Admin**:
 
@@ -14,7 +20,7 @@ Then reboot.
 
 ---
 
-## 🔹 2. Create an external vSwitch in Hyper-V
+## 2. Create an external vSwitch in Hyper-V
 
 1. Open **Hyper-V Manager**.
 2. On the right → **Virtual Switch Manager…**.
@@ -29,12 +35,14 @@ This makes a new bridged adapter in Windows.
 
 ---
 
-## 3. Tell WSL2 to use the bridged adapter
+## 3. Configure WSL2 to use bridge adapter
 
-Create or edit this file on Windows:
+This makes WSL2 use Hyper-V with a bridged adapter so it can get its own LAN IP.
 
-```
-C:\Users\<your-user>\.wslconfig
+In PowerShell (user home directory):
+
+```powershell
+notepad $env:USERPROFILE\.wslconfig
 ```
 
 Add:
@@ -45,9 +53,9 @@ networkingMode=bridged
 vmSwitch=WSLBridge
 ```
 
-> `vmSwitch` must match the exact name of the vSwitch you created.
+👉 Replace `WSLBridge` with the name of your external Hyper-V switch that is bound to your Ethernet adapter.
 
-Save and restart WSL:
+Restart WSL:
 
 ```powershell
 wsl --shutdown
@@ -55,34 +63,73 @@ wsl --shutdown
 
 ---
 
-## 4. Start Ubuntu in WSL2 again
+## 4. Prepare WSL2 Auto-Assign Script
+
+Inside Ubuntu (WSL2):
 
 ```powershell
 wsl -d Ubuntu-22.04
 ```
 
-Now check the IP inside WSL:
+1. Create script:
 
-```bash
-ip addr
-```
+   ```bash
+   sudo nano /etc/wsl-init.sh
+   ```
+
+   Content:
+
+   ```bash
+   #!/bin/bash
+   # Auto-assign static IP for direct Raspberry connection
+   if ! ip addr show eth0 | grep -q "192.168.2.3"; then
+       ip addr add 192.168.2.3/24 dev eth0 2>/dev/null
+   fi
+   ```
+
+2. Make it executable:
+
+   ```bash
+   sudo chmod +x /etc/wsl-init.sh
+   ```
+
+3. Hook into WSL startup by editing:
+
+   ```bash
+   sudo nano /etc/bash.bashrc
+   ```
+
+   Add at the bottom:
+
+   ```bash
+   if [ -f /etc/wsl-init.sh ]; then
+       /etc/wsl-init.sh
+   fi
+   ```
+
+Now, every time WSL2 starts, it ensures `192.168.2.3/24` is present.
+
 ---
 
-## 5. Test ROS 2 communication
+## 🔹 Step 3 – Networking Behavior
 
-* On WSL2:
+* **Lab (DHCP)**
 
-  ```bash
-  ros2 run demo_nodes_cpp talker
-  ```
-* On the LAN Linux PC:
+  * Windows: e.g. `150.162.167.75`
+  * Raspberry: e.g. `150.162.167.10`
+  * WSL2: e.g. `150.162.167.80` (from DHCP)
+  * All devices talk over `150.162.x.x`.
 
-  ```bash
-  ros2 run demo_nodes_cpp listener
-  ```
+* **Direct cable**
+
+  * Windows: `192.168.2.1` (manual)
+  * Raspberry: `192.168.2.2` (manual)
+  * WSL2: `192.168.2.3` (auto via script)
+  * All devices talk over `192.168.2.x`.
+
 ---
 
-⚠️ **Caveats**
+⚠️
 
 * Not officially supported by Microsoft.
 * If you move between Wi-Fi/Ethernet, you may need to rebind the vSwitch.
