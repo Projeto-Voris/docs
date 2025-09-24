@@ -8,6 +8,14 @@ Enable WSL2 Ubuntu to communicate via **UDP (ROS 2 / DDS)** in two scenarios for
 
 WSL2 should automatically support both, no manual reconfiguration.
 
+### Summary
+
+* [1. Enable Hyper-V (if not already)](1-enable-hyper-v-if-not-already)
+* [2. Create an external vSwitch in Hyper-V](2-create-an-external-vswitch-in-hyper-v)
+* [3. Configure WSL2 to use bridge adapter](3-configure-wsl2-to-use-bridge-adapter)
+* [4. Prepare WSL2 Auto-Assign Script](4-prepare-wsl2-auto-assign-script)
+* [4. Problems](%EF%B8%8F-problems)
+
 ## 1. Enable Hyper-V (if not already)
 
 Open PowerShell **as Admin**:
@@ -111,28 +119,46 @@ Now, every time WSL2 starts, it ensures `192.168.2.3/24` is present.
 
 ---
 
-## 🔹 Step 3 – Networking Behavior
-
-* **Lab (DHCP)**
-
-  * Windows: e.g. `150.162.167.75`
-  * Raspberry: e.g. `150.162.167.10`
-  * WSL2: e.g. `150.162.167.80` (from DHCP)
-  * All devices talk over `150.162.x.x`.
-
-* **Direct cable**
-
-  * Windows: `192.168.2.1` (manual)
-  * Raspberry: `192.168.2.2` (manual)
-  * WSL2: `192.168.2.3` (auto via script)
-  * All devices talk over `192.168.2.x`.
-
----
-
-⚠️
+## 4. Problems
 
 * Not officially supported by Microsoft.
 * If you move between Wi-Fi/Ethernet, you may need to rebind the vSwitch.
 * Windows firewall may still need UDP multicast rules open, or disable it.
 
 ---
+
+### 1. How to Fix DNS Issues in WSL2
+
+1.  **Configure DNS in WSL2**: The most effective solution is to manually set a stable DNS server within your WSL2 instance. This bypasses the problematic automatic DNS resolution.
+
+      * First, you need to tell WSL not to automatically generate the `resolv.conf` file, which contains the DNS settings. Open the `wsl.conf` file in a text editor:
+        ```bash
+        sudo nano /etc/wsl.conf
+        ```
+      * Add the following lines to the file:
+        ```
+        [network]
+        generateResolvConf = false
+        ```
+      * Save and exit the editor.
+      * Next, you'll create your own `resolv.conf` file with a reliable DNS server. Remove the old one first, then create a new one:
+        ```bash
+        sudo rm /etc/resolv.conf
+        sudo nano /etc/resolv.conf
+        ```
+      * Add a public DNS server. Using Google's (`8.8.8.8`) or Cloudflare's (`1.1.1.1`) is recommended.
+        ```
+        nameserver 8.8.8.8
+        ```
+      * Save and exit. Now, shut down and restart your WSL2 environment from a PowerShell window:
+        ```powershell
+        wsl --shutdown
+        ```
+      * Restart your WSL2 terminal.
+
+2.  **Disable Large Send Offload (LSO)**: High packet loss and network instability often stem from LSO. This can also cause DNS resolution failures. You should disable it on your `vEthernet` adapter if you haven't already. Open PowerShell as an administrator and run:
+
+    ```powershell
+    Set-NetAdapterLso -Name "vEthernet (WSL)" -IPv4Enabled $false -IPv6Enabled $false
+    ```
+
