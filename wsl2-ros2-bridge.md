@@ -10,11 +10,12 @@ WSL2 should automatically support both, no manual reconfiguration.
 
 ### Summary
 
-* [1. Enable Hyper-V (if not already)](1-enable-hyper-v-if-not-already)
-* [2. Create an external vSwitch in Hyper-V](2-create-an-external-vswitch-in-hyper-v)
-* [3. Configure WSL2 to use bridge adapter](3-configure-wsl2-to-use-bridge-adapter)
-* [4. Prepare WSL2 Auto-Assign Script](4-prepare-wsl2-auto-assign-script)
-* [4. Problems](%EF%B8%8F-problems)
+- **[Enable Hyper-V](#1-enable-hyper-v-if-not-already):** Turn on Hyper-V virtualization in Windows.
+- **[Create an External vSwitch](#2-create-an-external-vswitch-in-hyper-v):** Set up a bridged network in Hyper-V Manager.
+- **[Configure WSL2 Networking](#3-configure-wsl2-to-use-bridge-adapter):** Point WSL2 to use the external vSwitch for LAN connectivity.
+- **[Auto-Assign Static IP Script](#4-prepare-wsl2-auto-assign-script):** Ensure WSL2 always gets the correct static IP for direct Raspberry Pi connection.
+- **[Common Problems](#4-problems):** Troubleshooting tips and known limitations.
+- **[Fixing DNS Issues](#1-how-to-fix-dns-issues-in-wsl2):** How to resolve DNS and network problems in WSL2.
 
 ## 1. Enable Hyper-V (if not already)
 
